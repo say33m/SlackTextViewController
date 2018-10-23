@@ -237,6 +237,11 @@ CGFloat const SLKAutoCompletionViewDefaultHeight = 140.0;
     [super viewDidLayoutSubviews];
 }
 
+- (void)setLeftButtonHidden:(BOOL)hidden animated:(BOOL)animated
+{
+    [self.textInputbar setLeftButtonHidden:hidden animated:animated];
+}
+
 - (void)viewSafeAreaInsetsDidChange
 {
     [super viewSafeAreaInsetsDidChange];
@@ -322,6 +327,7 @@ CGFloat const SLKAutoCompletionViewDefaultHeight = 140.0;
         [_textInputbar.rightButton addTarget:self action:@selector(didPressRightButton:) forControlEvents:UIControlEventTouchUpInside];
         [_textInputbar.editorLeftButton addTarget:self action:@selector(didCancelTextEditing:) forControlEvents:UIControlEventTouchUpInside];
         [_textInputbar.editorRightButton addTarget:self action:@selector(didCommitTextEditing:) forControlEvents:UIControlEventTouchUpInside];
+        [_textInputbar.imageCloseButton addTarget:self action:@selector(didPressImageCloseButton:) forControlEvents:UIControlEventTouchUpInside];
         
         _textInputbar.textView.delegate = self;
         
@@ -378,6 +384,10 @@ CGFloat const SLKAutoCompletionViewDefaultHeight = 140.0;
 - (UIButton *)rightButton
 {
     return _textInputbar.rightButton;
+}
+
+- (UIButton *)imageCloseButton {
+    return _textInputbar.imageCloseButton;
 }
 
 - (UIModalPresentationStyle)modalPresentationStyle
@@ -587,6 +597,15 @@ CGFloat const SLKAutoCompletionViewDefaultHeight = 140.0;
     _textInputbar.bounces = bounces;
 }
 
+- (void)setImage:(UIImage *)image {
+    _textInputbar.image = image;
+    [self textDidUpdate:YES];
+}
+
+- (UIImage *)image {
+    return _textInputbar.image;
+}
+
 - (void)slk_updateInsetAdjustmentBehavior
     {
         // Deactivate automatic scrollView adjustment for inverted table view
@@ -753,6 +772,8 @@ CGFloat const SLKAutoCompletionViewDefaultHeight = 140.0;
     
     if (text.length > 0 && ![_textInputbar limitExceeded]) {
         return YES;
+    } else if (self.image) {
+      return YES;
     }
     
     return NO;
@@ -772,6 +793,10 @@ CGFloat const SLKAutoCompletionViewDefaultHeight = 140.0;
     
     // Clears cache
     [self clearCachedText];
+}
+
+- (void)didPressImageCloseButton:(id)sender {
+    self.image = nil;
 }
 
 - (void)editText:(NSString *)text
@@ -1890,6 +1915,7 @@ CGFloat const SLKAutoCompletionViewDefaultHeight = 140.0;
 - (void)clearCachedText
 {
     [self slk_cacheAttributedTextToDisk:nil];
+    self.image = nil;
 }
 
 - (void)slk_cacheAttributedTextToDisk:(NSAttributedString *)attributedText

@@ -64,6 +64,8 @@ NS_CLASS_AVAILABLE_IOS(7_0) @interface SLKTextViewController : UIViewController 
 /** The default typing indicator used to display user names horizontally. */
 @property (nonatomic, readonly) SLKTypingIndicatorView *_Nullable typingIndicatorView;
 
+@property (nonatomic, nullable) UIImage *image;
+
 /**
  The custom typing indicator view. Default is kind of SLKTypingIndicatorView.
  To customize the typing indicator view, you will need to call -registerClassForTypingIndicatorView: nside of any initialization method.
@@ -121,6 +123,7 @@ NS_CLASS_AVAILABLE_IOS(7_0) @interface SLKTextViewController : UIViewController 
 @property (nonatomic, readonly) SLKTextView *textView;
 @property (nonatomic, readonly) UIButton *leftButton;
 @property (nonatomic, readonly) UIButton *rightButton;
+@property (nonatomic, readonly) UIButton *imageCloseButton;
 
 
 #pragma mark - Initialization
@@ -233,6 +236,7 @@ NS_CLASS_AVAILABLE_IOS(7_0) @interface SLKTextViewController : UIViewController 
  */
 - (void)didChangeKeyboardStatus:(SLKKeyboardStatus)status;
 
+- (void)setLeftButtonHidden:(BOOL)hidden animated:(BOOL)animated;
 
 #pragma mark - Interaction Notifications
 ///------------------------------------------------
@@ -281,6 +285,10 @@ NS_CLASS_AVAILABLE_IOS(7_0) @interface SLKTextViewController : UIViewController 
  @param sender The object calling this method.
  */
 - (void)didPressRightButton:(id _Nullable)sender NS_REQUIRES_SUPER;
+
+
+- (void)didPressImageCloseButton:(id _Nullable)sender;
+
 
 /**
  Verifies if the right button can be pressed. If NO, the button is disabled.

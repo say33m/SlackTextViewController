@@ -31,6 +31,7 @@ NSString * const SLKTextInputbarDidMoveNotification =   @"SLKTextInputbarDidMove
 @property (nonatomic, strong) NSLayoutConstraint *rightButtonBottomMarginC;
 @property (nonatomic, strong) NSLayoutConstraint *editorContentViewHC;
 @property (nonatomic, strong) NSArray *charCountLabelVCs;
+@property (nonatomic, strong) UIImage *leftButtonImage;
 
 @property (nonatomic, strong) UILabel *charCountLabel;
 
@@ -94,7 +95,8 @@ NSString * const SLKTextInputbarDidMoveNotification =   @"SLKTextInputbarDidMove
     [self addSubview:self.textView];
     [self addSubview:self.charCountLabel];
     [self addSubview:self.contentView];
-
+    [self addSubview:self.imageView];
+  
     [self slk_setupViewConstraints];
     [self slk_updateConstraintConstants];
     
@@ -129,6 +131,88 @@ NSString * const SLKTextInputbarDidMoveNotification =   @"SLKTextInputbarDidMove
 + (BOOL)requiresConstraintBasedLayout
 {
     return YES;
+}
+
+- (void)setImage:(UIImage *)image {
+    _image = image;
+    [self handleImage];
+}
+
+- (void)handleImage {
+  if (_image) {
+    const CGFloat width = self.frame.size.width;
+    const CGSize dimensions = [self dimensionForImage:_image];
+    const CGFloat x = width - (dimensions.width + 8);
+    
+    _imageView.frame = CGRectMake(x, 8, dimensions.width, dimensions.height);
+  } else {
+    _imageView.frame = CGRectMake(0, 0, 0, 0);
+  }
+  _imageView.image = _image;
+  [self addCloseButton];
+  [self setNeedsLayout];
+  [self layoutIfNeeded];
+  
+  NSNotification *notification = [[NSNotification alloc] initWithName:@"" object:self.textView userInfo:nil];
+  [self slk_didChangeTextViewText:notification];
+}
+
+- (void)addCloseButton {
+  if (_image) {
+    if (_imageCloseButton.superview) { return; }
+    
+    [self addSubview:_imageCloseButton];
+    [_imageCloseButton sizeToFit];
+    const CGSize size = _imageCloseButton.frame.size;
+    const CGFloat x = self.frame.size.width - (size.width + 16);
+    const CGFloat y = 16;
+    _imageCloseButton.frame = CGRectMake(x, y, size.width, size.height);
+  } else {
+    [_imageCloseButton removeFromSuperview];
+  }
+}
+
+- (CGSize)dimensionForImage:(UIImage *)image {
+  if (_image) {
+    const CGFloat maxHeight = 108;
+    const CGFloat maxWidth = self.frame.size.width - 125;
+    
+    const CGSize imageSize = image.size;
+    const CGSize maxSize = CGSizeMake(maxWidth, maxHeight);
+    
+    if (CGSizeEqualToSize(imageSize, maxSize) == NO) {
+      
+      const CGFloat widthFactor = maxSize.width / imageSize.width;
+      const CGFloat heightFactor = maxSize.height / imageSize.height;
+      
+      CGFloat scaleFactor = 0;
+      
+      if (widthFactor < heightFactor) {
+        scaleFactor = widthFactor;
+      } else {
+        scaleFactor = heightFactor;
+      }
+      
+      CGFloat scaledWidth  = imageSize.width * scaleFactor;
+      CGFloat scaledHeight = imageSize.height * scaleFactor;
+      
+      return CGSizeMake(scaledWidth, scaledHeight);
+      
+    } else {
+      return CGSizeMake(maxWidth, maxHeight);
+    }
+    
+  } else {
+    return CGSizeZero;
+  }
+}
+
+- (void)setLeftButtonHidden:(BOOL)hidden animated:(BOOL)animated {
+  if (!_leftButton || !_leftButtonWC) { return; }
+  
+  if (hidden) {
+    _leftButtonWC.constant = 0;
+  }
 }
 
 
@@ -176,6 +260,18 @@ NSString * const SLKTextInputbarDidMoveNotification =   @"SLKTextInputbarDidMove
     }
     
     return _inputAccessoryView;
+}
+
+- (UIImageView *)imageView {
+  if (!_imageView) {
+    _imageView = [[UIImageView alloc] init];
+    _imageView.contentMode = UIViewContentModeScaleAspectFit;
+    _imageView.layer.masksToBounds = true;
+    _imageView.layer.cornerRadius = 6;
+    _imageView.alpha = 0.5;
+  }
+  
+  return _imageView;
 }
 
 - (UIButton *)leftButton
@@ -304,7 +400,12 @@ NSString * const SLKTextInputbarDidMoveNotification =   @"SLKTextInputbarDidMove
     CGFloat minimumHeight = self.textView.intrinsicContentSize.height;
     minimumHeight += self.contentInset.top;
     minimumHeight += self.slk_bottomMargin;
-    
+    minimumHeight += self.imageView.frame.size.height;
+  
+    if (self.imageView.frame.size.height > 0) {
+        minimumHeight += 8;
+    }
+  
     return minimumHeight;
 }
 
@@ -375,7 +476,7 @@ NSString * const SLKTextInputbarDidMoveNotification =   @"SLKTextInputbarDidMove
 - (CGFloat)slk_appropriateRightButtonWidth
 {
     if (self.autoHideRightButton) {
-        if (self.textView.text.length == 0) {
+        if (self.textView.text.length == 0 && !self.image) {
             return 0.0;
         }
     }
@@ -386,7 +487,7 @@ NSString * const SLKTextInputbarDidMoveNotification =   @"SLKTextInputbarDidMove
 - (CGFloat)slk_appropriateRightButtonMargin
 {
     if (self.autoHideRightButton) {
-        if (self.textView.text.length == 0) {
+        if (self.textView.text.length == 0 && !self.image) {
             return 0.0;
         }
     }
@@ -652,6 +753,7 @@ NSString * const SLKTextInputbarDidMoveNotification =   @"SLKTextInputbarDidMove
                             @"editorContentView": self.editorContentView,
                             @"charCountLabel": self.charCountLabel,
                             @"contentView": self.contentView,
+                            @"imageView": self.imageView
                             };
     
     NSDictionary *metrics = @{@"top" : @(self.contentInset.top),
@@ -659,14 +761,14 @@ NSString * const SLKTextInputbarDidMoveNotification =   @"SLKTextInputbarDidMove
                               @"right" : @(self.contentInset.right),
                               };
     
-    [self addConstraints:[NSLayoutConstraint constraintsWithVisualFormat:@"H:|-(left)-[leftButton(0)]-(<=left)-[textView]-(right)-[rightButton(0)]-(right)-|" options:0 metrics:metrics views:views]];
-    [self addConstraints:[NSLayoutConstraint constraintsWithVisualFormat:@"V:|-(>=0)-[leftButton(0)]-(0@750)-|" options:0 metrics:metrics views:views]];
-    [self addConstraints:[NSLayoutConstraint constraintsWithVisualFormat:@"V:|-(>=0)-[rightButton]-(<=0)-|" options:0 metrics:metrics views:views]];
-    [self addConstraints:[NSLayoutConstraint constraintsWithVisualFormat:@"H:|-(left@250)-[charCountLabel(<=50@1000)]-(right@750)-|" options:0 metrics:metrics views:views]];
-    [self addConstraints:[NSLayoutConstraint constraintsWithVisualFormat:@"V:|-0-[editorContentView(0)]-(<=top)-[textView(0@999)]-(0)-|" options:0 metrics:metrics views:views]];
-    [self addConstraints:[NSLayoutConstraint constraintsWithVisualFormat:@"H:|[editorContentView]|" options:0 metrics:metrics views:views]];
-    [self addConstraints:[NSLayoutConstraint constraintsWithVisualFormat:@"H:|[contentView]|" options:0 metrics:metrics views:views]];
-    [self addConstraints:[NSLayoutConstraint constraintsWithVisualFormat:@"V:[contentView(0)]|" options:0 metrics:metrics views:views]];
+  [self addConstraints:[NSLayoutConstraint constraintsWithVisualFormat:@"H:|-(left)-[leftButton(0)]-(<=left)-[textView]-(right)-[rightButton(0)]-(right)-|" options:0 metrics:metrics views:views]];
+  [self addConstraints:[NSLayoutConstraint constraintsWithVisualFormat:@"V:|-(>=0)-[leftButton(0)]-(0@750)-|" options:0 metrics:metrics views:views]];
+  [self addConstraints:[NSLayoutConstraint constraintsWithVisualFormat:@"V:|-(>=0)-[rightButton]-(<=0)-|" options:0 metrics:metrics views:views]];
+  [self addConstraints:[NSLayoutConstraint constraintsWithVisualFormat:@"H:|-(left@250)-[charCountLabel(<=50@1000)]-(right@750)-|" options:0 metrics:metrics views:views]];
+  [self addConstraints:[NSLayoutConstraint constraintsWithVisualFormat:@"V:[imageView]-0-[editorContentView(0)]-(<=top)-[textView(0@999)]-(0)-|" options:0 metrics:metrics views:views]];
+  [self addConstraints:[NSLayoutConstraint constraintsWithVisualFormat:@"H:|[editorContentView]|" options:0 metrics:metrics views:views]];
+  [self addConstraints:[NSLayoutConstraint constraintsWithVisualFormat:@"H:|[contentView]|" options:0 metrics:metrics views:views]];
+  [self addConstraints:[NSLayoutConstraint constraintsWithVisualFormat:@"V:[contentView(0)]|" options:0 metrics:metrics views:views]];
 
     self.textViewBottomMarginC = [self slk_constraintForAttribute:NSLayoutAttributeBottom firstItem:self secondItem:self.textView];
     self.editorContentViewHC = [self slk_constraintForAttribute:NSLayoutAttributeHeight firstItem:self.editorContentView secondItem:nil];
@@ -688,43 +790,54 @@ NSString * const SLKTextInputbarDidMoveNotification =   @"SLKTextInputbarDidMove
 
 - (void)slk_updateConstraintConstants
 {
-    CGFloat zero = 0.0;
+  CGFloat zero = 0.0;
+  
+  self.textViewBottomMarginC.constant = self.slk_bottomMargin;
+  
+  if (self.isEditing)
+  {
+    self.editorContentViewHC.constant = self.editorContentViewHeight;
     
-    self.textViewBottomMarginC.constant = self.slk_bottomMargin;
-
-    if (self.isEditing)
-    {
-        self.editorContentViewHC.constant = self.editorContentViewHeight;
-        
-        self.leftButtonWC.constant = zero;
-        self.leftButtonHC.constant = zero;
-        self.leftMarginWC.constant = zero;
-        self.leftButtonBottomMarginC.constant = zero;
-        self.rightButtonWC.constant = zero;
-        self.rightMarginWC.constant = zero;
+    self.leftButtonWC.constant = zero;
+    self.leftButtonHC.constant = zero;
+    self.leftMarginWC.constant = zero;
+    self.leftButtonBottomMarginC.constant = zero;
+    self.rightButtonWC.constant = zero;
+    self.rightMarginWC.constant = zero;
+  }
+  else {
+    self.editorContentViewHC.constant = zero;
+    
+    CGSize leftButtonSize = [self.leftButton imageForState:self.leftButton.state].size;
+    
+    if (leftButtonSize.width > 0) {
+      self.leftButtonHC.constant = roundf(leftButtonSize.height);
+      
+      CGFloat leftVerMargin = roundf((self.intrinsicContentSize.height - leftButtonSize.height) / 2.0) + self.slk_contentViewHeight / 2.0;
+      
+      if (_image) {
+        leftVerMargin -= (_imageView.frame.size.height / 2) + 4;
+      }
+      
+      self.leftButtonBottomMarginC.constant = leftVerMargin;
     }
-    else {
-        self.editorContentViewHC.constant = zero;
-        
-        CGSize leftButtonSize = [self.leftButton imageForState:self.leftButton.state].size;
-        
-        if (leftButtonSize.width > 0) {
-            self.leftButtonHC.constant = roundf(leftButtonSize.height);
-            self.leftButtonBottomMarginC.constant = roundf((self.intrinsicContentSize.height - leftButtonSize.height) / 2.0) + self.slk_contentViewHeight / 2.0;
-        }
-        
-        self.leftButtonWC.constant = roundf(leftButtonSize.width);
-        self.leftMarginWC.constant = (leftButtonSize.width > 0) ? self.contentInset.left : zero;
-        
-        self.rightButtonWC.constant = [self slk_appropriateRightButtonWidth];
-        self.rightMarginWC.constant = [self slk_appropriateRightButtonMargin];
-        
-        CGFloat rightVerMargin = (self.intrinsicContentSize.height - self.slk_contentViewHeight - self.rightButton.intrinsicContentSize.height) / 2.0;
-        CGFloat rightVerBottomMargin = rightVerMargin + self.slk_contentViewHeight;
-        
-        self.rightButtonTopMarginC.constant = rightVerMargin;
-        self.rightButtonBottomMarginC.constant = rightVerBottomMargin;
+    
+    self.leftButtonWC.constant = roundf(leftButtonSize.width);
+    self.leftMarginWC.constant = (leftButtonSize.width > 0) ? self.contentInset.left : zero;
+    
+    self.rightButtonWC.constant = [self slk_appropriateRightButtonWidth];
+    self.rightMarginWC.constant = [self slk_appropriateRightButtonMargin];
+    
+    CGFloat rightVerMargin = (self.intrinsicContentSize.height - self.slk_contentViewHeight - self.rightButton.intrinsicContentSize.height) / 2.0;
+    CGFloat rightVerBottomMargin = rightVerMargin + self.slk_contentViewHeight;
+    
+    if (_image) {
+      rightVerBottomMargin -= (_imageView.frame.size.height / 2) + 4;
     }
+    
+    self.rightButtonTopMarginC.constant = rightVerMargin;
+    self.rightButtonBottomMarginC.constant = rightVerBottomMargin;
+  }
 }
 
 
